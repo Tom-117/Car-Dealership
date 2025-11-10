@@ -3,4 +3,5 @@ uvicorn
 asyncpg
 sqlalchemy
 pydantic
+python-dotenv
 alembic

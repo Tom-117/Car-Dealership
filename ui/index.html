@@ -1,0 +1,94 @@
+<html>
+<head>
+    <title>Car Dealership Inventory</title>
+    <style> table { border-collapse: collapse; width: 100%; } th, td { border: 1px solid #ddd; padding: 8px; } </style>
+</head>
+<body>
+    <h1>Car Inventory</h1>
+    <button onclick="loadCars()">Refresh</button>
+    <table id="carTable">
+        <thead><tr><th>Make</th><th>Model</th><th>Year</th><th>Price</th><th>VIN</th><th>Color</th><th>Actions</th></tr></thead>
+        <tbody></tbody>
+    </table>
+
+    <h2>Add Car</h2>
+    <form id="carForm">
+        <input type="text" id="make" placeholder="Make" required><br>
+        <input type="text" id="model" placeholder="Model" required><br>
+        <input type="number" id="year" placeholder="Year" required><br>
+        <input type="number" id="price" placeholder="Price" step="0.01" required><br>
+        <input type="text" id="vin" placeholder="VIN" required><br>
+        <input type="text" id="color" placeholder="Color" required><br>
+        <button type="submit">Add Car</button>
+    </form>
+<script>
+    
+    const API_URL = (window.location.port === "8080")
+        ? "http://localhost:8000"
+        : ""; 
+
+    async function loadCars() {
+        try {
+            const res = await fetch(`${API_URL}/cars`);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const cars = await res.json();
+            const tbody = document.querySelector('#carTable tbody');
+            tbody.innerHTML = cars.map(car => `
+                <tr>
+                    <td>${car.make}</td>
+                    <td>${car.model}</td>
+                    <td>${car.year}</td>
+                    <td>$${Number(car.price).toFixed(2)}</td>
+                    <td>${car.vin}</td>
+                    <td>${car.color}</td>
+                    <td><button onclick="deleteCar(${car.id})">Delete</button></td>
+                </tr>
+            `).join('');
+        } catch (e) {
+            console.error("Load failed:", e);
+            alert("Failed to load cars. Check console.");
+        }
+    }
+
+    document.getElementById('carForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const car = {
+            make: document.getElementById('make').value,
+            model: document.getElementById('model').value,
+            year: parseInt(document.getElementById('year').value),
+            price: parseFloat(document.getElementById('price').value),
+            vin: document.getElementById('vin').value,
+            color: document.getElementById('color').value
+        };
+        try {
+            const res = await fetch(`${API_URL}/cars`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(car)
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            loadCars();
+            e.target.reset();
+        } catch (e) {
+            console.error("Add failed:", e);
+            alert("Failed to add car.");
+        }
+    });
+
+    async function deleteCar(id) {
+        if (!confirm("Delete this car?")) return;
+        try {
+            const res = await fetch(`${API_URL}/cars/${id}`, { method: 'DELETE' });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            loadCars();
+        } catch (e) {
+            console.error("Delete failed:", e);
+            alert("Failed to delete.");
+        }
+    }
+
+    
+    loadCars();
+</script>
+</body>
+</html>

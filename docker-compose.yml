@@ -5,11 +5,12 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    env_file:
+      - .env
     ports:
       - "8000:80"
     environment:
-      - DATABASE_URL=postgresql+asyncpg://postgres:password@db:5432/cardb
-      - PYTHONPATH=/app          # ← CRITICAL
+      - PYTHONPATH=/app
     depends_on:
       db:
         condition: service_healthy
