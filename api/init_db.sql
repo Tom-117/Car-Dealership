@@ -1,15 +1,18 @@
 CREATE TABLE IF NOT EXISTS cars (
     id SERIAL PRIMARY KEY,
-    make VARCHAR NOT NULL,
-    model VARCHAR NOT NULL,
+    make VARCHAR(100) NOT NULL,
+    model VARCHAR(100) NOT NULL,
     year INTEGER NOT NULL,
-    price FLOAT NOT NULL,
-    vin VARCHAR UNIQUE NOT NULL,
-    color VARCHAR
+    price NUMERIC(10, 2) NOT NULL,
+    vin VARCHAR(17) UNIQUE NOT NULL,
+    color VARCHAR(50),
+    image_url TEXT,          -- ADD THIS
+    thumbnail_url TEXT       -- ADD THIS
 );
 
--- Sample data
+-- Add some sample data with images
 INSERT INTO cars (make, model, year, price, vin, color) VALUES
-('Toyota', 'Camry', 2023, 28999.99, '4T1BF1FK0DU123456', 'Silver'),
-('Honda', 'Civic', 2022, 24999.99, '2HGFC2F69KH654321', 'Blue')
-ON CONFLICT DO NOTHING;
+('Toyota', 'Camry', 2023, 28000.00, '1HGCM82633A123456', 'Silver'),
+('Honda', 'Civic', 2024, 25000.00, '2HGFC2F59MH123457', 'Blue'),
+('Ford', 'Mustang', 2023, 45000.00, '1FA6P8TH5N5123458', 'Red')
+ON CONFLICT (vin) DO NOTHING;

@@ -1,11 +1,13 @@
 from sqlalchemy import Column, Integer, String, Float, create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from pydantic import BaseModel
+from typing import Optional
 
 Base = declarative_base()
 
 class Car(Base):
     __tablename__ = "cars"
+    
     id = Column(Integer, primary_key=True, index=True)
     make = Column(String, index=True)
     model = Column(String, index=True)
@@ -13,6 +15,8 @@ class Car(Base):
     price = Column(Float)
     vin = Column(String, unique=True, index=True)
     color = Column(String)
+    image_url = Column(String, nullable=True)      
+    thumbnail_url = Column(String, nullable=True)  
 
 class CarCreate(BaseModel):
     make: str
@@ -21,6 +25,8 @@ class CarCreate(BaseModel):
     price: float
     vin: str
     color: str
+    image_url: Optional[str] = None      
+    thumbnail_url: Optional[str] = None  
 
 class CarResponse(BaseModel):
     id: int
@@ -30,6 +36,8 @@ class CarResponse(BaseModel):
     price: float
     vin: str
     color: str
-
+    image_url: Optional[str] = None      
+    thumbnail_url: Optional[str] = None  
+    
     class Config:
         from_attributes = True

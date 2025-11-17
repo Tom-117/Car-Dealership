@@ -3,15 +3,12 @@
 <head>
     <meta charset="UTF-8" />
     <title>Car Dealership Inventory</title>
-
-   
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 
 <body class="bg-gray-100 text-gray-900 min-h-screen p-6">
 
-    <div class="max-w-6xl mx-auto">
-        
+    <div class="max-w-7xl mx-auto">
         
         <div class="flex justify-between items-center mb-6">
             <h1 class="text-3xl font-bold">Car Inventory</h1>
@@ -22,10 +19,14 @@
         </div>
 
         
+        <div id="statusBar" class="mb-4 p-3 rounded hidden"></div>
+
+        
         <div class="bg-white shadow rounded-lg overflow-hidden">
             <table class="min-w-full text-left border-collapse">
                 <thead class="bg-gray-100 border-b">
                     <tr>
+                        <th class="p-3 font-semibold">Image</th>
                         <th class="p-3 font-semibold">Make</th>
                         <th class="p-3 font-semibold">Model</th>
                         <th class="p-3 font-semibold">Year</th>
@@ -35,7 +36,11 @@
                         <th class="p-3 font-semibold">Actions</th>
                     </tr>
                 </thead>
-                <tbody id="carTableBody"></tbody>
+                <tbody id="carTableBody">
+                    <tr>
+                        <td colspan="8" class="p-3 text-center text-gray-500">Loading...</td>
+                    </tr>
+                </tbody>
             </table>
         </div>
 
@@ -63,89 +68,215 @@
                     class="border p-2 rounded w-full">
             </div>
 
+            
+            <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                <input type="file" id="imageInput" accept="image/*" class="hidden" onchange="handleImageSelect(event)">
+                <div id="imagePreview" class="hidden mb-4">
+                    <img id="previewImg" src="" alt="Preview" class="max-h-48 mx-auto rounded">
+                    <button type="button" onclick="clearImage()" class="mt-2 text-red-600 text-sm">Remove Image</button>
+                </div>
+                <button type="button" onclick="document.getElementById('imageInput').click()" 
+                    class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded">
+                     Upload Car Image (Optional)
+                </button>
+                <p class="text-sm text-gray-500 mt-2">JPG, PNG, or GIF (max 5MB)</p>
+            </div>
+
             <button type="submit"
-                class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded shadow">
+                class="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded shadow w-full font-semibold">
                 Add Car
             </button>
         </form>
     </div>
 
 <script>
-    const API_URL = (window.location.port === "8080")
-        ? "http://localhost:8000"
-        : "";
+    
+    const API_URL = (function() {
+        const hostname = window.location.hostname;
+        const port = window.location.port;
+        
+        if ((hostname === 'localhost' || hostname === '127.0.0.1') && port === '8080') {
+            return 'http://localhost:8000';
+        }
+        
+        return '/api';
+    })();
+
+    console.log('API URL:', API_URL);
+
+    let selectedImage = null;
+
+    function handleImageSelect(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        
+        if (file.size > 5 * 1024 * 1024) {
+            alert('Image too large. Maximum size is 5MB.');
+            event.target.value = '';
+            return;
+        }
+
+        
+        if (!file.type.startsWith('image/')) {
+            alert('Please select an image file.');
+            event.target.value = '';
+            return;
+        }
+
+        selectedImage = file;
+
+        // Show preview
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            document.getElementById('previewImg').src = e.target.result;
+            document.getElementById('imagePreview').classList.remove('hidden');
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function clearImage() {
+        selectedImage = null;
+        document.getElementById('imageInput').value = '';
+        document.getElementById('imagePreview').classList.add('hidden');
+    }
+
+    function showStatus(message, isError = false) {
+        const statusBar = document.getElementById('statusBar');
+        statusBar.textContent = message;
+        statusBar.className = `mb-4 p-3 rounded ${isError ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`;
+        statusBar.classList.remove('hidden');
+        setTimeout(() => statusBar.classList.add('hidden'), 5000);
+    }
 
     async function loadCars() {
         try {
             const res = await fetch(`${API_URL}/cars`);
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
             const cars = await res.json();
 
             const tbody = document.getElementById("carTableBody");
+            if (cars.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" class="p-3 text-center text-gray-500">No cars in inventory. Add one below!</td></tr>';
+                return;
+            }
+
             tbody.innerHTML = cars.map(car => `
                 <tr class="border-b hover:bg-gray-50">
-                    <td class="p-3">${car.make}</td>
-                    <td class="p-3">${car.model}</td>
+                    <td class="p-3">
+                        ${car.thumbnail_url ? 
+                            `<img src="${car.thumbnail_url}" alt="${car.make} ${car.model}" 
+                                 class="w-20 h-20 object-cover rounded cursor-pointer" 
+                                 onclick="window.open('${car.image_url || car.thumbnail_url}', '_blank')"
+                                 onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22%3E%3Crect fill=%22%23ddd%22 width=%22100%22 height=%22100%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22 fill=%22%23999%22%3ENo Image%3C/text%3E%3C/svg%3E'">` 
+                            : `<div class="w-20 h-20 bg-gray-200 rounded flex items-center justify-center text-gray-400 text-xs">No Image</div>`
+                        }
+                    </td>
+                    <td class="p-3">${escapeHtml(car.make)}</td>
+                    <td class="p-3">${escapeHtml(car.model)}</td>
                     <td class="p-3">${car.year}</td>
-                    <td class="p-3">$${Number(car.price).toFixed(2)}</td>
-                    <td class="p-3">${car.vin}</td>
-                    <td class="p-3">${car.color}</td>
+                    <td class="p-3">€${Number(car.price).toFixed(2)}</td>
+                    <td class="p-3">${escapeHtml(car.vin)}</td>
+                    <td class="p-3">
+                        <span class="inline-block px-2 py-1 rounded text-sm" style="background-color: ${car.color}20; color: ${car.color};">
+                            ${escapeHtml(car.color)}
+                        </span>
+                    </td>
                     <td class="p-3">
                         <button onclick="deleteCar(${car.id})"
-                            class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded">
+                            class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm">
                             Delete
                         </button>
                     </td>
                 </tr>
             `).join('');
+            
+            showStatus(`Loaded ${cars.length} car${cars.length !== 1 ? 's' : ''}`);
         } catch (e) {
             console.error("Load failed:", e);
-            alert("Failed to load cars. Check console.");
+            const tbody = document.getElementById("carTableBody");
+            tbody.innerHTML = `<tr><td colspan="8" class="p-3 text-center text-red-600">Error loading cars: ${e.message}</td></tr>`;
+            showStatus(`Failed to load cars: ${e.message}`, true);
         }
     }
 
     document.getElementById('carForm').addEventListener('submit', async (e) => {
         e.preventDefault();
 
-        const car = {
-            make: document.getElementById('make').value,
-            model: document.getElementById('model').value,
-            year: parseInt(document.getElementById('year').value),
-            price: parseFloat(document.getElementById('price').value),
-            vin: document.getElementById('vin').value,
-            color: document.getElementById('color').value
-        };
+        const formData = new FormData();
+        formData.append('make', document.getElementById('make').value.trim());
+        formData.append('model', document.getElementById('model').value.trim());
+        formData.append('year', document.getElementById('year').value);
+        formData.append('price', document.getElementById('price').value);
+        formData.append('vin', document.getElementById('vin').value.trim().toUpperCase());
+        formData.append('color', document.getElementById('color').value.trim());
+        
+        if (selectedImage) {
+            formData.append('image', selectedImage);
+        }
 
         try {
-            const res = await fetch(`${API_URL}/cars`, {
+            showStatus('Uploading car... Please wait.', false);
+            
+            const res = await fetch(`${API_URL}/cars-with-image`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(car)
+                body: formData
             });
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            
+            if (!res.ok) {
+                const errorData = await res.json().catch(() => ({}));
+                throw new Error(errorData.detail || `HTTP ${res.status}`);
+            }
 
-            loadCars();
+            const result = await res.json();
+            showStatus(selectedImage ? 
+                'Car added! Thumbnail will be generated in a few seconds.' : 
+                'Car added successfully!');
+            
             e.target.reset();
+            clearImage();
+            loadCars();
+            
+            // Reload after 3 seconds if image was uploaded (to show thumbnail)
+            if (selectedImage) {
+                setTimeout(() => {
+                    showStatus('Reloading to check for thumbnail...');
+                    loadCars();
+                }, 3000);
+            }
         } catch (e) {
             console.error("Add failed:", e);
-            alert("Failed to add car.");
+            showStatus(`Failed to add car: ${e.message}`, true);
         }
     });
 
     async function deleteCar(id) {
-        if (!confirm("Delete this car?")) return;
+        if (!confirm("Are you sure you want to delete this car?")) return;
 
         try {
             const res = await fetch(`${API_URL}/cars/${id}`, { method: 'DELETE' });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
+            showStatus('Car deleted successfully!');
             loadCars();
         } catch (e) {
             console.error("Delete failed:", e);
-            alert("Failed to delete.");
+            showStatus(`Failed to delete: ${e.message}`, true);
         }
     }
 
+    function escapeHtml(text) {
+        const map = {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+        };
+        return String(text).replace(/[&<>"']/g, m => map[m]);
+    }
+
+    
     loadCars();
 </script>
 
